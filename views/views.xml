@@ -1,0 +1,175 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+    <record model="ir.ui.view" id="custom_sales_view_order_tree">
+      <field name="name">custom_sales.view.order.tree</field>
+      <field name="model">sale.order</field>
+      <field name="arch" type="xml">
+        <tree decoration-success="(amount_total>=100)">
+          <field name="state" invisible="1"/>
+
+          <field name="name" string="Number" readonly="1" decoration-bf="1"/>
+          <field name="partner_id" readonly="1"/>
+          <field name="employee_id"/> 
+          <field name="amount_total" sum="Total Tax Included" widget="monetary" decoration-bf="1" optional="show"/>
+        </tree>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="custom_sales_view_order_kanban">
+      <field name="name">custom_sales.view.order.kanban</field>
+      <field name="model">sale.order</field>
+      <field name="arch" type="xml">
+        <kanban class="o_sale_ext_order_kanban">
+          <field name="name"/>
+          <field name="partner_id"/>
+          <field name="employee_id"/>
+          <field name="currency_id"/>
+          <field name="amount_total"/>
+          <templates>
+            <t t-name="kanban-box">
+              <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                  <div class="o_kanban_record_top mb16">
+                    <div class="o_kanban_record_headings mt4">
+                      <strong><t t-esc="record.partner_id.value"/></strong>
+                    </div>
+                    <field name="amount_total" widget="monetary" decoration-success="(amount_total>=100)"/>
+                  </div>
+                  <div class="o_kanban_record_bottom">
+                    <field name="employee_id" widget="many2one"/>
+                  </div>
+              </div>
+            </t>
+          </templates>
+        </kanban>
+      </field>
+    </record>
+
+    <record id="custom_sales_view_order_form" model="ir.ui.view">
+      <field name="name">custom_sales.view_order_form</field>
+      <field name="model">sale.order</field>
+      <field name="arch" type="xml">
+        <form>
+          <header>
+            <button name="action_quotation_send" string="Send by Email" type="object" states="draft" class="btn-primary"/>
+            <button name="action_confirm" id="action_confirm" string="Confirm" class="btn-primary" type="object" attrs="{'invisible': [('state', 'not in', ['sent'])]}"/>
+            <button name="action_confirm" string="Confirm" type="object" attrs="{'invisible': [('state', 'not in', ['draft'])]}"/>
+            <button name="action_quotation_send" string="Send by Email" type="object" states="sent,sale"/>
+            <button name="action_cancel" type="object" string="Cancel" attrs="{'invisible': ['|', ('state', 'not in', ['draft', 'sent','sale']), ('id', '=', False)]}"/>
+            <button name="action_draft" states="cancel" type="object" string="Set to Quotation"/>
+            <field name="state" widget="statusbar" statusbar_visible="draft,sent,sale"/>
+          </header>
+          <sheet>
+            <div class="oe_title">
+              <h1>
+                <field name="name" readonly="1"/>
+              </h1>
+            </div>
+            <group>
+              <field name="partner_id" widget="res_partner_many2one"/>
+              <field name="company_id" invisible="1"/>
+              <field name="employee_id"/>
+              <field name="state"/>
+            </group>
+            <notebook>
+              <field name="pricelist_id" options="{'no_open':True,'no_create': True}" invisible="1"/>
+              <page string="Order lines">
+                <field name="currency_id" invisible="1"/>
+                <field name="order_line" widget="section_and_note_one2many" mode="tree,form">
+                  <tree>
+                    <field name="name" string="Product"/>
+                    <field name="product_uom_qty" string="Quantity"/>
+                    <field name="qty_delivered" string="Delivered"/>
+                    <field name="qty_invoiced" string="Invoice"/>
+                    <field name="price_unit" string="Unit Price"/>
+                    <field name="tax_id" widget="many2many_tags"/>
+                    <field name="price_subtotal" string="Subtotal" widget="monetary"/>
+                  </tree>
+                  <form>
+                    <field name="display_type" invisible="1"/>
+                    <field name="sequence" invisible="1"/>
+                    <field name="product_uom_category_id" invisible="1"/>
+                    <group>
+                      <group name="group_top">
+                        <field name="product_updatable" invisible="1"/>
+                        <field name="invoice_status" invisible="1"/>
+                        <field name="qty_to_invoice" invisible="1"/>
+                        <field name="qty_delivered_manual" invisible="1"/>
+                        <field name="qty_delivered_method" invisible="1"/>
+                        <field name="product_uom_readonly" invisible="1"/>
+                        <field name="product_uom" invisible="1"/>
+
+                        <field name="product_id" domain="[('sale_ok', '=', True), '|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]" context="{'partner_id':parent.partner_id, 'quantity':product_uom_qty, 'pricelist':parent.pricelist_id, 'uom':product_uom, 'company_id': parent.company_id}" attrs="{'readonly': [('product_updatable', '=', False)], 'required': [('display_type', '=', False)],}" force_save="1" widget="many2one_barcode"/>
+                      </group>
+                      <group name="group_bottom">
+                        <field name="name" string="Product"/>
+                        <field name="product_uom_qty" string="Quantity"/>
+                        <field name="qty_delivered" string="Delivered"/>
+                        <field name="qty_invoiced" string="Invoice"/>
+                      </group>
+                    </group>
+                    <group>
+                      
+                      <field name="price_total" invisible="1"/>
+                      <field name="price_tax" invisible="1"/>
+                      <field name="price_subtotal" invisible="1"/>
+                      <field name="price_unit" string="Unit Price" widget="monetary"/>
+                      <field name="tax_id" widget="many2many_tags"/>
+                      <field name="price_subtotal" string="Subtotal" widget="monetary"/>
+                    </group>
+                  </form>
+                </field>
+                <group name="note_group" col="6" class="mt-2 mt-md-0">
+                    <group colspan="4">
+                      <field name="note" nolabel="1" placeholder="Terms and conditions..."/>
+                    </group>
+                    <group class="oe_subtotal_footer oe_right" colspan="2" name="sale_total">
+                      <field name="amount_untaxed" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                      <field name="amount_tax" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                      <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                        <label for="amount_total"/>
+                      </div>
+                      <field name="amount_total" nolabel="1" class="oe_subtotal_footer_separator" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    </group>
+                    <div class="oe_clear"/>
+                  </group>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="custom_sales_employee_view_form" model="ir.ui.view">
+      <field name="name">custom_sales.employee.view.form</field>
+      <field name="model">hr.employee</field>
+      <field name="inherit_id" ref="hr.view_employee_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='mobile_phone']" position="before">
+          <field name="session_status" decoration-success="(session_status=='online')" decoration-warning="(session_status=='busy')" decoration-danger="(session_status=='offline')"/>
+          <field name="total_orders"/>
+        </xpath>
+      </field>
+    </record>
+
+    <!-- actions opening views on models -->
+    <record model="ir.actions.act_window" id="action_custom_sales_order_list">
+      <field name="name">Orders</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">sale.order</field>
+      <field name="view_mode">tree,kanban,form</field>
+      <field name="view_ids" 
+             eval="[(5,0,0),(0,0,{'view_mode':'tree','view_id':ref('custom_sales_view_order_tree')}), (0,0,{'view_mode':'kanban','view_id':ref('custom_sales_view_order_kanban')}), (0,0,{'view_mode':'form','view_id':ref('custom_sales_view_order_form')})]" />
+    </record>
+
+    <!-- Top menu item -->
+    <menuitem name="Custom Sales" id="custom_sales.menu_root"/>
+
+    <!-- menu categories -->
+    <menuitem name="Sales" id="custom_sales.menu_1" parent="custom_sales.menu_root"/>
+
+    <!-- actions -->
+    <menuitem name="Orders" id="custom_sales.menu_orders" parent="custom_sales.menu_1"
+              action="action_custom_sales_order_list"/>
+  </data>
+</odoo>
